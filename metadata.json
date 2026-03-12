@@ -1,5 +1,5 @@
 {
   "name": "Attendance Dashboard",
   "description": "Sistema de Registro de Asistencia de Estudiantes con React, Tailwind CSS y preparado para Supabase.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["camera", "geolocation"]
 }
