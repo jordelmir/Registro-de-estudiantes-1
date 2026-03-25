@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import LoginScreen from './components/LoginScreen';
 import { generateMultimodalEmbeddings } from './services/geminiService';
+import { supabase, getStudents, updateStudentStatus, getTeachers, logAudit } from './services/supabaseService';
 
 // --- Types & Interfaces ---
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused' | 'unmarked';
@@ -185,6 +186,28 @@ export default function App() {
 
   // --- Effects ---
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [studentData, teacherData] = await Promise.all([
+          getStudents(),
+          getTeachers()
+        ]);
+        setRecords(studentData.map(s => ({
+          ...s,
+          timestamp: s.timestamp_record
+        })));
+        setTeachers(teacherData.map(t => ({
+          ...t,
+          timestamp: t.timestamp_record
+        })));
+      } catch (error) {
+        console.error("Error loading data from Supabase:", error);
+      }
+    };
+    loadData();
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setIsProfileMenuOpen(false);
@@ -282,21 +305,26 @@ export default function App() {
   }, []);
 
   // --- Handlers ---
-  const handleTeacherStatusChange = (teacherId: string, newStatus: AttendanceStatus) => {
+  const handleTeacherStatusChange = async (teacherId: string, newStatus: AttendanceStatus) => {
     if (role !== 'admin') return;
 
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
-    setTeachers(prev => prev.map(teacher => {
-      if (teacher.id === teacherId) {
-        return { 
-          ...teacher, 
-          status: newStatus, 
-          timestamp: newStatus === 'unmarked' ? null : now
-        };
-      }
-      return teacher;
-    }));
+    try {
+      await supabase.from('teachers').update({ status: newStatus, timestamp_record: now }).eq('id', teacherId);
+      setTeachers(prev => prev.map(teacher => {
+        if (teacher.id === teacherId) {
+          return { 
+            ...teacher, 
+            status: newStatus, 
+            timestamp: newStatus === 'unmarked' ? null : now
+          };
+        }
+        return teacher;
+      }));
+    } catch (error) {
+      console.error("Error updating teacher status:", error);
+    }
   };
 
   const handleStatusChange = async (studentId: string, newStatus: AttendanceStatus) => {
@@ -326,6 +354,7 @@ export default function App() {
         reason: reason
       };
       setAuditLogs(prev => [newLog, ...prev]);
+      logAudit(newLog).catch(console.error);
     }
 
     // Offline Queueing (PWA)
@@ -336,25 +365,29 @@ export default function App() {
       setSyncQueue(prev => [...prev, newAction]);
     }
     
-    setRecords(prev => prev.map(record => {
-      if (record.id === studentId) {
-        let newStreak = record.streak;
-        if (newStatus === 'present' && record.status !== 'present') newStreak++;
-        if (newStatus === 'absent') newStreak = 0;
+    try {
+      await updateStudentStatus(studentId, newStatus, now);
+      setRecords(prev => prev.map(record => {
+        if (record.id === studentId) {
+          let newStreak = record.streak;
+          if (newStatus === 'present' && record.status !== 'present') newStreak++;
+          if (newStatus === 'absent') newStreak = 0;
 
-        // Early Warning System: Mark atRisk if absences > threshold or streak breaks
-        const isNowAtRisk = newStatus === 'absent' && newStreak === 0;
+          const isNowAtRisk = newStatus === 'absent' && newStreak === 0;
 
-        return { 
-          ...record, 
-          status: newStatus, 
-          timestamp: newStatus === 'unmarked' ? null : now,
-          streak: newStreak,
-          atRisk: record.atRisk || isNowAtRisk
-        };
-      }
-      return record;
-    }));
+          return { 
+            ...record, 
+            status: newStatus, 
+            timestamp: newStatus === 'unmarked' ? null : now,
+            streak: newStreak,
+            atRisk: record.atRisk || isNowAtRisk
+          };
+        }
+        return record;
+      }));
+    } catch (error) {
+      console.error("Error updating student status:", error);
+    }
   };
 
   const handleLMSSync = async () => {
@@ -768,7 +801,7 @@ export default function App() {
               </div>
             )}
 
-            {view === 'list' && (role === 'admin' || role === 'teacher' || role === 'substitute') && (
+            {view === 'list' && ((role as string) === 'admin' || (role as string) === 'teacher' || (role as string) === 'substitute') && (
               <>
                 {/* Stats Dashboard */}
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -785,16 +818,15 @@ export default function App() {
                   {/* Toolbar */}
                   <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-800">
                     <div className="relative w-full max-w-sm">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                       <input 
-                        type="text" placeholder={role === 'parent' || role === 'student' ? "Buscar..." : `Buscar en ${selectedClass}...`} 
+                        type="text" placeholder={(role as string) === 'parent' || (role as string) === 'student' ? "Buscar..." : `Buscar en ${selectedClass}...`} 
                         value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-500"
                       />
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                      {role !== 'parent' && role !== 'student' && (
+                      {((role as string) !== 'parent' && (role as string) !== 'student') && (
                         <>
                           <button onClick={handleSimulateQR} disabled={isLocked} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 dark:bg-indigo-600 dark:hover:bg-indigo-700">
                             <QrCode className="w-4 h-4" /> <span className="hidden sm:inline">Escanear QR</span>
@@ -805,7 +837,7 @@ export default function App() {
                           </button>
                         </>
                       )}
-                      {(role === 'admin' || role === 'teacher') && (
+                      {((role as string) === 'admin' || (role as string) === 'teacher') && (
                         <button onClick={() => setIsAddModalOpen(true)} className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                           <Plus className="w-4 h-4" />
                         </button>
@@ -841,7 +873,7 @@ export default function App() {
                                   <div>
                                     <p className="text-sm font-semibold text-slate-900 flex items-center gap-2 dark:text-slate-200">
                                       {student.full_name}
-                                      {student.notes && <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" title={student.notes} />}
+                                      {student.notes && <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />}
                                     </p>
                                     <p className="text-xs text-slate-500 font-mono dark:text-slate-400">{student.id}</p>
                                   </div>
@@ -864,10 +896,10 @@ export default function App() {
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                                  <button onClick={() => handleStatusChange(student.id, 'present')} disabled={isLocked || role === 'parent' || role === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'present' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}>Presente</button>
-                                  <button onClick={() => handleStatusChange(student.id, 'absent')} disabled={isLocked || role === 'parent' || role === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'absent' ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-sm dark:bg-rose-500/20 dark:border-rose-500/30 dark:text-rose-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}>Ausente</button>
-                                  <button onClick={() => handleStatusChange(student.id, 'late')} disabled={isLocked || role === 'parent' || role === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'late' ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}>Tardía</button>
-                                  <button onClick={() => handleStatusChange(student.id, 'excused')} disabled={isLocked || role === 'parent' || role === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'excused' ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm dark:bg-purple-500/20 dark:border-purple-500/30 dark:text-purple-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`} title="Falta Justificada">Justif.</button>
+                                  <button onClick={() => handleStatusChange(student.id, 'present')} disabled={isLocked || (role as string) === 'parent' || (role as string) === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'present' ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}>Presente</button>
+                                  <button onClick={() => handleStatusChange(student.id, 'absent')} disabled={isLocked || (role as string) === 'parent' || (role as string) === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'absent' ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-sm dark:bg-rose-500/20 dark:border-rose-500/30 dark:text-rose-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}>Ausente</button>
+                                  <button onClick={() => handleStatusChange(student.id, 'late')} disabled={isLocked || (role as string) === 'parent' || (role as string) === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'late' ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm dark:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`}>Tardía</button>
+                                  <button onClick={() => handleStatusChange(student.id, 'excused')} disabled={isLocked || (role as string) === 'parent' || (role as string) === 'student'} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${student.status === 'excused' ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm dark:bg-purple-500/20 dark:border-purple-500/30 dark:text-purple-400' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700'}`} title="Falta Justificada">Justif.</button>
                                 </div>
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-500 text-right font-mono dark:text-slate-400">
@@ -990,7 +1022,6 @@ export default function App() {
                           console.error("QR Scanner Error:", error);
                         }}
                         components={{
-                          audio: false,
                           finder: false,
                         }}
                         styles={{
