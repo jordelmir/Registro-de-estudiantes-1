@@ -516,15 +516,15 @@ export default function App() {
 
 // --- Sub-components ---
   const StatCard = ({ title, value, icon: Icon, colorClass, subtitle }: any) => (
-    <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 transition-all hover:shadow-md dark:bg-slate-800/80 dark:border-slate-700/60">
-      <div className={`p-3 rounded-xl ${colorClass} bg-opacity-10 dark:bg-opacity-20`}>
-        <Icon className={`w-6 h-6 ${colorClass.replace('bg-', 'text-')} dark:text-opacity-90`} />
+    <div className="bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-2xl p-4 sm:p-5 shadow-sm flex items-center gap-3 sm:gap-4 transition-all hover:shadow-md dark:bg-slate-800/80 dark:border-slate-700/60 min-w-0">
+      <div className={`p-2 sm:p-3 rounded-xl ${colorClass} bg-opacity-10 dark:bg-opacity-20 shrink-0`}>
+        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${colorClass.replace('bg-', 'text-')} dark:text-opacity-90`} />
       </div>
-      <div>
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
-        <div className="flex items-baseline gap-2">
-          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
-          {subtitle && <span className="text-xs font-medium text-slate-400 dark:text-slate-500">{subtitle}</span>}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 truncate">{title}</p>
+        <div className="flex items-baseline gap-2 truncate">
+          <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 truncate">{value}</p>
+          {subtitle && <span className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 truncate">{subtitle}</span>}
         </div>
       </div>
     </div>
@@ -625,7 +625,7 @@ export default function App() {
           <span className="ml-3 font-bold text-white text-lg hidden lg:block tracking-tight">EduTrack Pro</span>
         </div>
         
-        <nav className="flex-1 py-6 space-y-2 px-3">
+        <nav className="flex-1 py-6 space-y-2 px-3 overflow-y-auto">
           {navItems.map(item => {
             const Icon = item.icon;
             return (
@@ -634,8 +634,8 @@ export default function App() {
                 onClick={() => setView(item.id as ViewMode)} 
                 className={`w-full flex items-center p-3 rounded-xl transition-colors ${view === item.id ? 'bg-indigo-600/10 text-indigo-400' : 'hover:bg-slate-800 hover:text-white'}`}
               >
-                <Icon className="w-5 h-5 lg:mr-3 mx-auto lg:mx-0" />
-                <span className="hidden lg:block font-medium">{item.label}</span>
+                <Icon className="w-5 h-5 lg:mr-3 mx-auto lg:mx-0 shrink-0" />
+                <span className="hidden lg:block font-medium truncate">{item.label}</span>
               </button>
             );
           })}
@@ -692,20 +692,21 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative min-w-0">
         
         {/* Top Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 z-10 dark:bg-slate-900/80 dark:border-slate-800">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-slate-800 hidden sm:block dark:text-slate-100">
+        <header className="h-auto min-h-[4rem] py-3 bg-white/80 backdrop-blur-md border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 z-10 dark:bg-slate-900/80 dark:border-slate-800">
+          <div className="flex items-center gap-3 min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 hidden sm:block dark:text-slate-100 truncate">
               {view === 'list' && (role === 'parent' ? 'Asistencia de Mis Hijos' : role === 'student' ? 'Mi Asistencia' : 'Registro de Asistencia')}
               {view === 'seating' && 'Gestión Visual del Aula'}
               {view === 'analytics' && 'Panel de Rendimiento'}
               {view === 'teachers' && 'Gestión de Profesores'}
+              {view === 'ai-embeddings' && 'Motor AI'}
             </h2>
             
             {/* Network Status Indicator */}
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${isOnline ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border shrink-0 ${isOnline ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
               {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{isOnline ? 'Sincronizado' : 'Modo Offline'}</span>
               {syncQueue.length > 0 && (
@@ -714,33 +715,33 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {role === 'admin' && (
               <button 
                 onClick={handleLMSSync}
                 disabled={isSyncing || !isOnline}
-                className="hidden md:flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="hidden md:flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
                 <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> 
                 <span className="hidden sm:inline">Sincronizar LMS</span>
               </button>
             )}
             {(role === 'admin' || role === 'teacher' || role === 'substitute') && (
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1.5 dark:bg-slate-800 dark:border-slate-700">
-                <BookOpen className="w-4 h-4 text-indigo-500 ml-1 dark:text-indigo-400" />
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1.5 dark:bg-slate-800 dark:border-slate-700 shrink-0 max-w-[140px] sm:max-w-none">
+                <BookOpen className="w-4 h-4 text-indigo-500 ml-1 shrink-0 dark:text-indigo-400" />
                 <select 
                   value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}
-                  className="bg-transparent border-none focus:ring-0 text-slate-700 text-sm font-semibold cursor-pointer outline-none px-1 dark:text-slate-200"
+                  className="bg-transparent border-none focus:ring-0 text-slate-700 text-sm font-semibold cursor-pointer outline-none px-1 dark:text-slate-200 w-full truncate"
                 >
                   {availableClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)}
                 </select>
               </div>
             )}
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1.5 dark:bg-slate-800 dark:border-slate-700">
-              <Calendar className="w-4 h-4 text-slate-400 ml-1 dark:text-slate-500" />
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1.5 dark:bg-slate-800 dark:border-slate-700 shrink-0">
+              <Calendar className="w-4 h-4 text-slate-400 ml-1 shrink-0 dark:text-slate-500" />
               <input 
                 type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent border-none focus:ring-0 text-slate-700 text-sm font-medium cursor-pointer outline-none px-1 dark:text-slate-200"
+                className="bg-transparent border-none focus:ring-0 text-slate-700 text-sm font-medium cursor-pointer outline-none px-1 dark:text-slate-200 max-w-[120px] sm:max-w-none"
                 disabled={role === 'substitute' || role === 'student' || role === 'parent'} 
               />
             </div>
@@ -770,7 +771,7 @@ export default function App() {
             {view === 'list' && (role === 'admin' || role === 'teacher' || role === 'substitute') && (
               <>
                 {/* Stats Dashboard */}
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                   <StatCard title="Total" value={stats.total} icon={Users} colorClass="bg-blue-500 text-blue-600" />
                   <StatCard title="Presentes" value={stats.present} icon={CheckCircle} colorClass="bg-emerald-500 text-emerald-600" />
                   <StatCard title="Ausentes" value={stats.absent} icon={XCircle} colorClass="bg-rose-500 text-rose-600" />
@@ -1019,7 +1020,7 @@ export default function App() {
                   Pizarra / Profesor
                 </div>
                 
-                <div className="grid grid-cols-3 gap-8 w-full max-w-3xl">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-8 w-full max-w-3xl">
                   {/* Generate a 3x3 grid for demonstration */}
                   {Array.from({ length: 9 }).map((_, idx) => {
                     const row = Math.floor(idx / 3);
@@ -1027,7 +1028,7 @@ export default function App() {
                     const student = visibleRecords.find(r => r.seat?.row === row && r.seat?.col === col);
                     
                     if (!student) {
-                      return <div key={idx} className="h-32 border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center text-slate-400 text-sm font-medium bg-white/50 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-500">Vacío</div>;
+                      return <div key={idx} className="h-auto min-h-[100px] sm:min-h-[128px] border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center text-slate-400 text-sm font-medium bg-white/50 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-500">Vacío</div>;
                     }
 
                     const statusColors = {
@@ -1048,13 +1049,13 @@ export default function App() {
                           };
                           handleStatusChange(student.id, nextStatus[student.status]);
                         }}
-                        className={`h-32 flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all shadow-sm ${statusColors[student.status]} ${isLocked ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer hover:shadow-md hover:-translate-y-1'}`}
+                        className={`h-auto min-h-[100px] sm:min-h-[128px] w-full flex flex-col items-center justify-center p-2 sm:p-4 rounded-2xl border-2 transition-all shadow-sm ${statusColors[student.status]} ${isLocked ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer hover:shadow-md hover:-translate-y-1'}`}
                       >
-                        <div className="w-10 h-10 rounded-full bg-white/50 dark:bg-black/20 flex items-center justify-center font-bold mb-2 shadow-sm">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/50 dark:bg-black/20 flex items-center justify-center font-bold mb-1 sm:mb-2 shadow-sm shrink-0 text-xs sm:text-base">
                           {student.full_name.split(' ')[0][0]}{student.full_name.split(' ')[1]?.[0] || ''}
                         </div>
-                        <span className="text-sm font-bold text-center leading-tight">{student.full_name.split(' ')[0]}</span>
-                        <span className="text-xs opacity-75 mt-1 capitalize">{student.status === 'unmarked' ? 'Sin marcar' : student.status}</span>
+                        <span className="text-xs sm:text-sm font-bold text-center leading-tight truncate w-full px-1">{student.full_name.split(' ')[0]}</span>
+                        <span className="text-[10px] sm:text-xs opacity-75 mt-0.5 sm:mt-1 capitalize truncate w-full px-1">{student.status === 'unmarked' ? 'Sin marcar' : student.status}</span>
                       </button>
                     );
                   })}
